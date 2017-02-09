@@ -3,13 +3,17 @@ package br.com.threadsSocket.servidor;
 import java.io.PrintStream;
 import java.net.Socket;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 public class DistribuirTarefas implements Runnable {
 
     private Socket socket;
     private ServidorTarefas servidor;
+    private ExecutorService threadPool;
 
-    public DistribuirTarefas(Socket socket,ServidorTarefas servidor) {
+    public DistribuirTarefas(ExecutorService threadPool,Socket socket,ServidorTarefas servidor) {
+    	this.threadPool = threadPool;
         this.socket = socket;
         this.servidor = servidor;
     }
@@ -33,10 +37,21 @@ public class DistribuirTarefas implements Runnable {
                     case "c1": {
                         // confirmação do o cliente
                         saidaCliente.println("Confirmação do comando c1");
+                        ComandoC1 c1 = new ComandoC1(saidaCliente);
+                        this.threadPool.execute(c1);
                         break;
                     }
                     case "c2": {
                         saidaCliente.println("Confirmação do comando c2");
+                        //criando os dois comando 
+                        ComandoC2ChamaWS c2WS = new ComandoC2ChamaWS(saidaCliente);
+                        ComandoC2AcessaBanco c2Banco = new ComandoC2AcessaBanco(saidaCliente);
+
+                        //passando os comandos para o pool, resutlado é um Future
+                        Future<String> futureWS = this.threadPool.submit(c2WS);
+                        Future<String> futureBanco = this.threadPool.submit(c2Banco);
+                        
+                        this.threadPool.submit(new JuntaResultadosFutureWSFutureBanco(futureWS, futureBanco, saidaCliente));
                         break;
                     }
                     case "fim": {
